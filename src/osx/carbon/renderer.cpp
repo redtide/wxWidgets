@@ -129,6 +129,15 @@ public:
                                     int flags = 0) wxOVERRIDE;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
 
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE;
+
     virtual void DrawGauge(wxWindow* win,
                            wxDC& dc,
                            const wxRect& rect,
@@ -779,6 +788,79 @@ void wxRendererMac::DrawTitleBarBitmap(wxWindow *win,
 }
 
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
+
+void wxRendererMac::DrawPageTab(wxWindow* WXUNUSED(win),
+                                wxDC& dc,
+                                const wxRect& rect,
+                                wxDirection direction,
+                                const wxString& WXUNUSED(label),
+                                const wxBitmap& WXUNUSED(bitmap),
+                                int WXUNUSED(flags),
+                                int WXUNUSED(indexAccel))
+{
+    dc.SetBrush( *wxTRANSPARENT_BRUSH );
+    {
+        HIRect tabRect = CGRectMake(rect.x, rect.y, rect.width, rect.height);
+
+        wxGCDCImpl* impl = (wxGCDCImpl*) dc.GetImpl();
+        CGContextRef cgContext;
+        cgContext = (CGContextRef) impl->GetGraphicsContext()->GetNativeContext();
+
+        ThemeTabDirection tabDirection;
+        if (direction == wxUP)
+            tabDirection = kThemeTabNorth;
+        else if(direction == wxDOWN)
+            tabDirection = kThemeTabSouth;
+        else if(direction == wxLEFT)
+            tabDirection = kThemeTabWest;
+        else
+            tabDirection = kThemeTabEast;
+
+        HIThemeTabAdornment tabAdornment = kHIThemeTabAdornmentNone;
+        if (flags & wxCONTROL_FOCUSED)
+            adornment = kHIThemeTabAdornmentFocus; // TODO: kHIThemeTabAdornment{Leading|Trailing}Separator ?
+
+        ThemeTabStyle tabStyle;
+        if (flags & wxCONTROL_DISABLED)
+        {
+            tabStyle = (flags & wxCONTROL_CURRENT)
+                ? kThemeTabFrontUnavailable
+                : kThemeTabNonFrontUnavailable;
+        }
+        else
+        {
+            if (flags & wxCONTROL_CURRENT)
+            {
+                if (flags & wxCONTROL_SELECTED)
+                {
+                    tabStyle = kThemeTabFront;
+                }
+                else
+                {
+                    tabStyle = (flags & wxCONTROL_PRESSED)
+                        ? kThemeTabNonFrontPressed
+                        : kThemeTabNonFront;
+                }
+            }
+            else
+            {
+                tabStyle = (flags & wxCONTROL_SELECTED)
+                    ? kThemeTabFrontInactive
+                    : kThemeTabNonFrontInactive;
+            }
+        }
+        HIThemeTabDrawInfo drawInfo;
+        memset(&drawInfo, 0, sizeof(drawInfo));
+        drawInfo.adornment = tabAdornment;
+        drawInfo.direction = tabDirection;
+        drawInfo.position = kHIThemeTabPositionOnly; // TODO: kHIThemeTabPosition{First|Middle|Last} ?
+        drawInfo.size = kHIThemeTabSizeNormal;       // TODO: kHIThemeTabSize{Small|Mini} ?
+        drawInfo.style = tabStyle;
+        drawInfo.version = 0;
+
+        HIThemeDrawTab(&tabRect, &drawInfo, cgContext, kHIThemeOrientationNormal, nullptr);
+    }
+}
 
 void wxRendererMac::DrawGauge(wxWindow* WXUNUSED(win),
                               wxDC& dc,

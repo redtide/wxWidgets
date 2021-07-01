@@ -116,7 +116,14 @@ protected:
 class wxRendererMSW : public wxRendererMSWBase
 {
 public:
-    wxRendererMSW() { }
+    wxRendererMSW()
+    {
+        // TODO: (AZ) is this necessary nowadays?
+        m_penBlack     = wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DDKSHADOW));
+        m_penDarkGrey  = wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DSHADOW));
+        m_penLightGrey = wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DLIGHT));
+        m_penHighlight = wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DHIGHLIGHT));
+    }
 
     static wxRendererNative& Get();
 
@@ -160,6 +167,25 @@ public:
                                     wxTitleBarButton button,
                                     int flags = 0) wxOVERRIDE;
 
+
+    virtual void DrawButtonLabel(wxDC& dc,
+                                 const wxString& label,
+                                 const wxBitmap& image,
+                                 const wxRect& rect,
+                                 int flags = 0,
+                                 int alignment = wxALIGN_LEFT | wxALIGN_TOP,
+                                 int indexAccel = -1,
+                                 wxRect *rectBounds = NULL) wxOVERRIDE;
+
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE;
+
     virtual wxSize GetCheckBoxSize(wxWindow *win, int flags = 0) wxOVERRIDE;
 
     virtual int GetHeaderButtonHeight(wxWindow *win) wxOVERRIDE;
@@ -185,6 +211,12 @@ private:
     {
         DoDrawFrameControl(DFC_BUTTON, kind, win, dc, rect, flags);
     }
+
+    // GDI objects we often use
+    wxPen m_penBlack,
+          m_penDarkGrey,
+          m_penLightGrey,
+          m_penHighlight;
 
     wxDECLARE_NO_COPY_CLASS(wxRendererMSW);
 };
@@ -265,6 +297,15 @@ public:
                                        wxDC& dc,
                                        const wxRect& rect,
                                        int flags = 0) wxOVERRIDE;
+
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE;
 
     virtual void DrawTextCtrl(wxWindow* win,
                               wxDC& dc,
@@ -506,6 +547,240 @@ wxRendererMSW::DrawPushButton(wxWindow *win,
     }
 
     DoDrawButton(DFCS_BUTTONPUSH, win, dc, rect, flags);
+}
+
+void
+wxRendererMSW::DrawButtonLabel(wxDC& dc,
+                               const wxString& label,
+                               const wxBitmap& image,
+                               const wxRect& rect,
+                               int flags,
+                               int alignment,
+                               int indexAccel,
+                               wxRect *rectBounds)
+{
+    wxDCTextColourChanger clrChanger(dc);
+
+    wxRect rectLabel = rect;
+    if ( !label.empty() && (flags & wxCONTROL_DISABLED) )
+    {
+        if ( flags & wxCONTROL_PRESSED )
+        {
+            // shift the label if a button is pressed
+            rectLabel.Offset(1, 1);
+        }
+
+        // draw shadow of the text
+        clrChanger.Set(wxSystemSettings::GetColour( wxSYS_COLOUR_3DHIGHLIGHT ));
+        wxRect rectShadow = rect;
+        rectShadow.Offset(1, 1);
+        dc.DrawLabel(label, rectShadow, alignment, indexAccel);
+
+        // make the main label text grey
+        clrChanger.Set(wxSystemSettings::GetColour( wxSYS_COLOUR_3DSHADOW ));
+
+        if ( flags & wxCONTROL_FOCUSED )
+        {
+            // leave enough space for the focus rect
+            rectLabel.Inflate(-2);
+        }
+    }
+
+    dc.DrawLabel(label, image, rectLabel, alignment, indexAccel, rectBounds);
+
+    if ( !label.empty() && (flags & wxCONTROL_FOCUSED) )
+    {
+        rectLabel.Inflate(-1);
+
+        DrawFocusRect(NULL, dc, rectLabel);
+    }
+}
+
+void
+wxRendererMSW::DrawPageTab(wxWindow* WXUNUSED(win),
+                           wxDC& dc,
+                           const wxRect& rect,
+                           wxDirection direction,
+                           const wxString& label,
+                           const wxBitmap& bitmap,
+                           int flags,
+                           int WXUNUSED(indexAccel))
+{
+    #define SELECT_FOR_VERTICAL(X,Y) ( isVertical ? Y : X )
+    #define REVERSE_FOR_VERTICAL(X,Y) \
+        SELECT_FOR_VERTICAL(X,Y)      \
+        ,                             \
+        SELECT_FOR_VERTICAL(Y,X)
+
+    wxRect r = rect;
+
+    bool isVertical = ( direction == wxLEFT ) || ( direction == wxRIGHT );
+
+    // the current tab is drawn indented (to the top for default case) and
+    // bigger than the other ones
+    const wxSize indent = wxSize(2, 2);
+
+    if ( flags & wxCONTROL_SELECTED )
+    {
+        r.Inflate( SELECT_FOR_VERTICAL( indent.x , 0),
+                   SELECT_FOR_VERTICAL( 0, indent.y ));
+
+        switch ( direction )
+        {
+            default:
+                wxFAIL_MSG(wxT("invaild notebook tab orientation"));
+                // fall through
+            case wxTOP:
+                r.y -= indent.y;
+                // fall through
+            case wxBOTTOM:
+                r.height += indent.y;
+                break;
+            case wxLEFT:
+                r.x -= indent.x;
+                // fall through
+            case wxRIGHT:
+                r.width += indent.x;
+                break;
+        }
+    }
+
+    // draw the text, image and the focus around them (if necessary)
+    wxRect rectLabel( REVERSE_FOR_VERTICAL(r.x, r.y),
+                      REVERSE_FOR_VERTICAL(r.width, r.height) );
+    rectLabel.Deflate(1, 1);
+
+    if ( isVertical )
+    {
+        // draw it horizontally into memory and rotate for screen
+        wxMemoryDC dcMem;
+        wxBitmap bmpRotated, bmpMem( rectLabel.x + rectLabel.width,
+                                     rectLabel.y + rectLabel.height );
+        dcMem.SelectObject(bmpMem);
+        dcMem.SetBackground(dc.GetBackground());
+        dcMem.SetFont(dc.GetFont());
+        dcMem.SetTextForeground(dc.GetTextForeground());
+        dcMem.Clear();
+
+        bmpRotated =
+#if wxUSE_IMAGE
+        wxBitmap( wxImage(bitmap.ConvertToImage()).Rotate90(direction==wxLEFT) );
+#else
+        bitmap;
+#endif // wxUSE_IMAGE
+
+        DrawButtonLabel(dcMem, label, bmpRotated, rectLabel,
+                        flags, wxALIGN_CENTRE);
+        dcMem.SelectObject(wxNullBitmap);
+
+        bmpMem =
+#if wxUSE_IMAGE
+        wxBitmap( wxImage(bmpMem.ConvertToImage()).Rotate90(direction==wxRIGHT) );
+#else
+        bmpMem.GetSubBitmap(rectLabel);
+#endif // wxUSE_IMAGE
+
+        dc.DrawBitmap(bmpMem, rectLabel.y, rectLabel.x, false);
+    }
+    else
+    {
+        DrawButtonLabel(dc, label, bitmap, rectLabel, flags, wxALIGN_CENTRE);
+    }
+
+    // now draw the tab border itself (maybe use DrawRoundedRectangle()?)
+    static const wxCoord CUTOFF = 2; // radius of the rounded corner
+    wxCoord x  = SELECT_FOR_VERTICAL(r.x, r.y),
+            y  = SELECT_FOR_VERTICAL(r.y, r.x),
+            x2 = SELECT_FOR_VERTICAL(r.GetRight(), r.GetBottom()),
+            y2 = SELECT_FOR_VERTICAL(r.GetBottom(), r.GetRight());
+
+    // FIXME: all this code will break if the tab indent or the border width,
+    //        it is tied to the fact that both of them are equal to 2
+    switch ( direction )
+    {
+        default:
+            // default is top
+        case wxLEFT:
+            // left orientation looks like top but IsVertical makes x and y reversed
+        case wxTOP:
+            // top is not vertical so use coordinates in written order
+            dc.SetPen(m_penHighlight);
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x, y2),
+                        REVERSE_FOR_VERTICAL(x, y + CUTOFF));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x, y + CUTOFF),
+                        REVERSE_FOR_VERTICAL(x + CUTOFF, y));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x + CUTOFF, y),
+                        REVERSE_FOR_VERTICAL(x2 - CUTOFF + 1, y));
+
+            dc.SetPen(m_penBlack);
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2, y2),
+                        REVERSE_FOR_VERTICAL(x2, y + CUTOFF));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2, y + CUTOFF),
+                        REVERSE_FOR_VERTICAL(x2 - CUTOFF, y));
+
+            dc.SetPen(m_penDarkGrey);
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2 - 1, y2),
+                        REVERSE_FOR_VERTICAL(x2 - 1, y + CUTOFF - 1));
+
+            if ( flags & wxCONTROL_SELECTED )
+            {
+                dc.SetPen(m_penLightGrey);
+
+                // overwrite the part of the border below this tab
+                dc.DrawLine(REVERSE_FOR_VERTICAL(x + 1, y2 + 1),
+                            REVERSE_FOR_VERTICAL(x2 - 1, y2 + 1));
+
+                // and the shadow of the tab to the left of us
+                dc.DrawLine(REVERSE_FOR_VERTICAL(x + 1, y + CUTOFF + 1),
+                            REVERSE_FOR_VERTICAL(x + 1, y2 + 1));
+            }
+            break;
+
+        case wxRIGHT:
+            // right orientation looks like bottom but IsVertical makes x and y reversed
+        case wxBOTTOM:
+            // bottom is not vertical so use coordinates in written order
+            dc.SetPen(m_penHighlight);
+            // we need to continue one pixel further to overwrite the corner of
+            // the border for the selected tab
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x, y - (flags & wxCONTROL_SELECTED ? 1 : 0)),
+                        REVERSE_FOR_VERTICAL(x, y2 - CUTOFF));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x, y2 - CUTOFF),
+                        REVERSE_FOR_VERTICAL(x + CUTOFF, y2));
+
+            dc.SetPen(m_penBlack);
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x + CUTOFF, y2),
+                        REVERSE_FOR_VERTICAL(x2 - CUTOFF + 1, y2));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2, y),
+                        REVERSE_FOR_VERTICAL(x2, y2 - CUTOFF));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2, y2 - CUTOFF),
+                        REVERSE_FOR_VERTICAL(x2 - CUTOFF, y2));
+
+            dc.SetPen(m_penDarkGrey);
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x + CUTOFF, y2 - 1),
+                        REVERSE_FOR_VERTICAL(x2 - CUTOFF + 1, y2 - 1));
+            dc.DrawLine(REVERSE_FOR_VERTICAL(x2 - 1, y),
+                        REVERSE_FOR_VERTICAL(x2 - 1, y2 - CUTOFF + 1));
+
+            if ( flags & wxCONTROL_SELECTED )
+            {
+                dc.SetPen(m_penLightGrey);
+
+                // overwrite the part of the (double!) border above this tab
+                dc.DrawLine(REVERSE_FOR_VERTICAL(x + 1, y - 1),
+                            REVERSE_FOR_VERTICAL(x2 - 1, y - 1));
+                dc.DrawLine(REVERSE_FOR_VERTICAL(x + 1, y - 2),
+                            REVERSE_FOR_VERTICAL(x2 - 1, y - 2));
+
+                // and the shadow of the tab to the left of us
+                dc.DrawLine(REVERSE_FOR_VERTICAL(x + 1, y2 - CUTOFF),
+                            REVERSE_FOR_VERTICAL(x + 1, y - 1));
+            }
+            break;
+    }
+
+    #undef SELECT_FOR_VERTICAL
+    #undef REVERSE_FOR_VERTICAL
 }
 
 void
@@ -1226,6 +1501,41 @@ void wxRendererXP::DrawGauge(wxWindow* win,
         0,
         &contentRect,
         NULL);
+}
+
+void wxRendererXP::DrawPageTab(wxWindow* win,
+                               wxDC& dc,
+                               const wxRect& rect,
+                               wxDirection direction,
+                               const wxString& label,
+                               const wxBitmap& bitmap,
+                               int flags,
+                               int indexAccel)
+{
+    wxUxThemeHandle hTheme(window, L"TAB");
+    if ( !hTheme )
+        m_rendererNative.DrawPageTab(win, dc, rect, label, bitmap, direction, flags, indexAccel);
+        return;
+    }
+
+    RECT rc;
+    wxCopyRectToRECT(rect, rc);
+
+    int state = TIS_NORMAL;
+    if ( flags & wxCONTROL_DISABLED )
+        state = TIS_DISABLED;
+    else if ( flags & wxCONTROL_SELECTED )
+        state = TIS_SELECTED;
+    else if ( flags & wxCONTROL_CURRENT )
+        state = TIS_HOT;
+    else if ( flags & wxCONTROL_FOCUSED )
+        state = TIS_FOCUSED;
+
+    wxUxThemeEngine::Get()->DrawThemeBackground(hTheme,
+                                                GetHdcOf(dc.GetTempHDC()),
+                                                TABP_TABITEM,
+                                                state,
+                                                &rc, NULL);
 }
 
 // ----------------------------------------------------------------------------

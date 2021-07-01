@@ -354,6 +354,15 @@ public:
                                     int flags = 0) = 0;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
 
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) = 0;
+
     // Draw a gauge with native style like a wxGauge would display.
     //
     // wxCONTROL_SPECIAL flag must be used for drawing vertical gauges.
@@ -436,7 +445,7 @@ public:
         : m_rendererNative(rendererNative) { }
 
 
-    virtual int  DrawHeaderButton(wxWindow *win,
+    virtual int  DrawHeaderButton(wxWindow* win,
                                   wxDC& dc,
                                   const wxRect& rect,
                                   int flags = 0,
@@ -571,6 +580,16 @@ public:
                                     int flags = 0) wxOVERRIDE
         { m_rendererNative.DrawTitleBarBitmap(win, dc, rect, button, flags); }
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
+
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection dir,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE
+        { m_rendererNative.DrawPageTab(win, dc, rect, dir, label, bitmap, flags, indexAccel); }
 
     virtual void DrawGauge(wxWindow* win,
                            wxDC& dc,

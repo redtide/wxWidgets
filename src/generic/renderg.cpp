@@ -149,6 +149,15 @@ public:
                                     int flags = 0) wxOVERRIDE;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
 
+    virtual void DrawPageTab(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE;
+
     virtual void DrawGauge(wxWindow* win, wxDC& dc, const wxRect& rect, int value, int max, int flags = 0) wxOVERRIDE;
 
     virtual void DrawItemText(wxWindow* win,
@@ -521,6 +530,164 @@ int wxRendererGeneric::GetHeaderButtonMargin(wxWindow *WXUNUSED(win))
     return 5;
 }
 
+// TODO: (AZ) compare with current code
+// From wxAuiDefaultToolBarArt
+static wxColour GetBaseColour()
+{
+#if defined( __WXMAC__ ) && wxOSX_USE_COCOA_OR_CARBON
+    wxColour baseColour =
+    wxColour(wxMacCreateCGColorFromHITheme(kThemeBrushToolbarBackground));
+#else
+    wxColour baseColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+#endif
+
+    // the baseColour is too pale to use as our base colour,
+    // so darken it a bit --
+    if ((255-baseColour.Red()) + (255-baseColour.Green()) +
+        (255-baseColour.Blue()) < 60)
+    {
+        baseColour = baseColour.ChangeLightness(92);
+    }
+
+    return baseColour;
+}
+
+void wxRendererGeneric::DrawPageTab(wxWindow* WXUNUSED(win),
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    wxDirection direction,
+                                    const wxString& WXUNUSED(label),
+                                    const wxBitmap& WXUNUSED(bitmap),
+                                    int flags,
+                                    int WXUNUSED(indexAccel))
+{
+    wxPoint  borderPoints[6];
+    wxColour baseColour   = GetBaseColour();
+    wxColour borderColour = baseColour.ChangeLightness(75);
+
+    if( direction == wxBOTTOM )
+    {
+        borderPoints[0] = wxPoint(rect.GetX(), rect.GetY());
+
+        borderPoints[1] = wxPoint(rect.GetX(),
+                                  rect.GetY() + rect.GetHeight() - 6);
+
+        borderPoints[2] = wxPoint(rect.GetX() + 2,
+                                  rect.GetY() + rect.GetHeight() - 4);
+
+        borderPoints[3] = wxPoint(rect.GetX() + rect.GetWidth()  - 2,
+                                  rect.GetY() + rect.GetHeight() - 4);
+
+        borderPoints[4] = wxPoint(rect.GetX() + rect.GetWidth(),
+                                  rect.GetY() + rect.GetHeight() - 6);
+
+        borderPoints[5] = wxPoint(rect.GetX() + rect.GetWidth(), rect.GetY());
+    }
+    else // if( direction == wxTOP )
+    {
+        borderPoints[0] = wxPoint(rect.GetX(),
+                                  rect.GetY() + rect.GetHeight() - 4);
+
+        borderPoints[1] = wxPoint(rect.GetX(), rect.GetY() + 2);
+
+        borderPoints[2] = wxPoint(rect.GetX() + 2, rect.GetY());
+
+        borderPoints[3] = wxPoint(rect.GetX() + rect.GetWidth() - 2,
+                                  rect.GetY());
+
+        borderPoints[4] = wxPoint(rect.GetX() + rect.GetWidth(),
+                                  rect.GetY() + 2);
+
+        borderPoints[5] = wxPoint(rect.GetX() + rect.GetWidth(),
+                                  rect.GetY() + rect.GetHeight() - 4);
+    }
+/*
+TODO: (AZ)
+    else if( direction == wxLEFT ) {}
+    else if( direction == wxRIGHT ) {}
+*/
+    if( flags & wxCONTROL_SELECTED ) // Draw active tab
+    {
+        // Draw base background color
+        wxRect r(rect.GetX(), rect.GetY(), rect.GetWidth(), rect.GetHeight());
+
+        wxColour activeColour = GetBaseColour();
+
+        dc.SetPen(wxPen(activeColour));
+        dc.SetBrush(wxBrush(activeColour));
+        dc.DrawRectangle(r.x+1, r.y+1, r.width-1, r.height-4);
+
+        // This white helps fill out the gradient at the top of the tab
+        dc.SetPen(*wxWHITE_PEN);
+        dc.SetBrush(*wxWHITE_BRUSH);
+        dc.DrawRectangle(r.GetX() + 2, r.GetY() + 1,
+                         r.GetWidth() - 3, r.GetHeight() - 4);
+
+        // These two points help the rounded corners appear more antialiased
+        dc.SetPen(wxPen(activeColour));
+        dc.DrawPoint(r.GetX() + 2, r.GetY() + 1);
+        dc.DrawPoint(r.GetX() + r.GetWidth() - 2, r.GetY() + 1);
+
+        // Set rectangle down a bit for gradient drawing
+        r.SetX(r.GetX() + 2);
+        r.SetHeight(r.GetHeight() / 2);
+        r.SetWidth(r.GetWidth() - 3);
+        r.SetY(r.GetY() + r.GetHeight() - 2);
+
+        // Draw gradient background
+        dc.GradientFillLinear(r, activeColour, *wxWHITE, wxNORTH);
+    }
+    else // Draw inactive tab
+    {
+        wxRect r(rect.GetX(), rect.GetY() + 1,
+                 rect.GetWidth(), rect.GetHeight() - 3);
+
+        // Start the gradent up a bit and leave the inside border inset
+        // by a pixel for a 3D look.  Only the top half of the inactive
+        // tab will have a slight gradient
+        r.SetX(r.GetX() + 3);
+        r.SetY(r.GetY() + 1);
+        r.SetWidth(r.GetWidth() - 4);
+        r.SetHeight((r.GetHeight() / 2) - 1);
+
+        // -- Draw top gradient fill for glossy look
+        wxColor topColour    = baseColour;
+        wxColor bottomColour = topColour.ChangeLightness(160);
+        dc.GradientFillLinear(r, bottomColour, topColour, wxNORTH);
+
+        r.SetY((r.GetY() + r.GetHeight()) - 1);
+
+        // -- Draw bottom fill for glossy look
+        dc.GradientFillLinear(r, baseColour, baseColour, wxSOUTH);
+    }
+
+    // Draw tab outline
+    dc.SetPen(wxPen(borderColour));
+    dc.SetBrush(*wxTRANSPARENT_BRUSH);
+    dc.DrawPolygon(WXSIZEOF(borderPoints), borderPoints);
+
+    // There are two horizontal grey lines at the bottom of the tab control,
+    // this gets rid of the top one of those lines in the tab control
+    if( flags & wxCONTROL_SELECTED )
+    {
+        if( direction == wxBOTTOM )
+        {
+            dc.SetPen(wxPen(baseColour.ChangeLightness(170)));
+        }
+/*
+TODO: (AZ)
+        else if( direction == wxLEFT ) {}
+        else if( direction == wxRIGHT ) {}
+*/
+        else // if( direction == wxTOP )
+        {
+            dc.SetPen(wxPen(baseColour));
+        }
+
+        dc.DrawLine(borderPoints[0].x + 1, borderPoints[0].y,
+                    borderPoints[5].x,     borderPoints[5].y);
+    }
+}
 
 // draw the plus or minus sign
 void

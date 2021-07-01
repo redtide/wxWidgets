@@ -126,6 +126,8 @@ private:
         { OnToggleDrawFlag(event, wxCONTROL_UNDETERMINED); }
     void OnDrawSpecial(wxCommandEvent &event)
         { OnToggleDrawFlag(event, wxCONTROL_SPECIAL); }
+    void OnDrawSelected(wxCommandEvent &event)
+        { OnToggleDrawFlag(event, wxCONTROL_SELECTED); }
 
     void OnAlignLeft(wxCommandEvent& WXUNUSED(event))
         { OnChangeAlign(wxALIGN_LEFT); }
@@ -241,6 +243,8 @@ private:
             flagsString += "wxCONTROL_UNDETERMINED ";
         if (m_flags & wxCONTROL_SPECIAL)
             flagsString += "wxCONTROL_SPECIAL ";
+        if ( m_flags & wxCONTROL_SELECTED )
+            flagsString += "wxCONTROL_SELECTED ";
         if (flagsString.empty())
             flagsString = "(none)";
         dc.DrawText("Using flags: " + flagsString, x1, y);
@@ -305,6 +309,17 @@ private:
                                     wxRect(wxPoint(x2, y), sizeExpand), m_flags);
         y += lineHeight + sizeExpand.y;
 
+        // TODO: (AZ) remove hardcoded size
+        dc.DrawText("DrawPushButton()", x1, y);
+        renderer.DrawPushButton(this, dc, wxRect(x2, y, 30, 30), m_flags);
+
+        y += lineHeight + 20;
+
+        dc.DrawText("DrawComboBoxDropButton()", x1, y);
+        renderer.DrawComboBoxDropButton(this, dc, wxRect(x2, y, 20, 30), m_flags);
+
+        y += lineHeight + 20;
+
 #ifdef wxHAS_DRAW_TITLE_BAR_BITMAP
         dc.DrawText("DrawTitleBarBitmap()", x1, y);
         wxRect rBtn(x2, y, FromDIP(21), FromDIP(21));
@@ -325,6 +340,13 @@ private:
 
         y += lineHeight + rBtn.height;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
+
+        dc.DrawText("DrawPageTab()", x1, y);
+
+        renderer.DrawPageTab(this, dc, wxRect(x2, y, 120, 30), wxTOP, wxS("A tab"),
+                             wxNullBitmap, m_flags);
+
+        y += lineHeight + 20;
 
         // The meanings of those are reversed for the vertical gauge below.
         const wxCoord heightGauge = FromDIP(24);
@@ -410,6 +432,7 @@ enum
     Render_DrawHot,
     Render_DrawUndetermined,
     Render_DrawSpecial,
+    Render_DrawSelected,
 
     Render_AlignLeft,
     Render_AlignCentre,
@@ -464,6 +487,7 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(Render_DrawHot, MyFrame::OnDrawHot)
     EVT_MENU(Render_DrawUndetermined, MyFrame::OnDrawUndetermined)
     EVT_MENU(Render_DrawSpecial, MyFrame::OnDrawSpecial)
+    EVT_MENU(Render_DrawSelected, MyFrame::OnDrawSelected)
     EVT_MENU(Render_AlignLeft, MyFrame::OnAlignLeft)
     EVT_MENU(Render_AlignCentre, MyFrame::OnAlignCentre)
     EVT_MENU(Render_AlignRight, MyFrame::OnAlignRight)
@@ -561,6 +585,8 @@ MyFrame::MyFrame()
                               "Draw in unde&termined state\tCtrl-T");
     menuFile->AppendCheckItem(Render_DrawSpecial,
                               "Draw in &special state\tCtrl-S");
+    menuFile->AppendCheckItem(Render_DrawSelected,
+                              "Draw in selected state");
     menuFile->AppendSeparator();
 
     menuFile->AppendRadioItem(Render_AlignLeft, "&Left align\tCtrl-1");

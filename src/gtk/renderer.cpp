@@ -131,6 +131,15 @@ public:
 
     virtual void DrawFocusRect(wxWindow* win, wxDC& dc, const wxRect& rect, int flags = 0) wxOVERRIDE;
 
+    virtual void DrawPageTab(wxWindow *win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxDirection direction,
+                             const wxString& label,
+                             const wxBitmap& bitmap = wxNullBitmap,
+                             int flags = 0,
+                             int indexAccel = -1) wxOVERRIDE;
+
     virtual wxSize GetCheckBoxSize(wxWindow *win, int flags = 0) wxOVERRIDE;
 
     virtual wxSplitterRenderParams GetSplitterParams(const wxWindow *win) wxOVERRIDE;
@@ -1171,4 +1180,74 @@ void wxRendererGTK::DrawRadioBitmap(wxWindow*, wxDC& dc, const wxRect& rect, int
         rect.width, rect.height
     );
 #endif
+}
+
+void wxRendererGTK::DrawPageTab(wxWindow* WXUNUSED(win), wxDC& dc,
+                                const wxRect& rect, wxDirection direction,
+                                const wxString& WXUNUSED(label),
+                                const wxBitmap& WXUNUSED(bitmap),
+                                int flags, int WXUNUSED(indexAccel))
+{
+    wxGTKDrawable* drawable = wxGetGTKDrawable(dc);
+    if (drawable == NULL)
+        return;
+
+    GtkWidget* notebook = wxGTKPrivate::GetNotebookWidget();
+
+    GtkPositionType position;
+    if (direction == wxTOP)
+        position = GTK_POS_BOTTOM;
+    else if (direction == wxBOTTOM)
+        position = GTK_POS_TOP;
+    else if (direction == wxLEFT)
+        position = GTK_POS_RIGHT;
+    else // (direction == wxRIGHT)
+        position = GTK_POS_LEFT;
+
+#ifdef __WXGTK3__
+    int state = GTK_STATE_FLAG_ACTIVE;
+    if ( flags & wxCONTROL_PRESSED )
+        state |= GTK_STATE_FLAG_NORMAL;
+    if ( flags & wxCONTROL_CURRENT )
+        state |= GTK_STATE_FLAG_PRELIGHT;
+    if ( flags & wxCONTROL_SELECTED )
+        state |= GTK_STATE_FLAG_SELECTED;
+    if ( flags & wxCONTROL_DISABLED )
+        state |= GTK_STATE_FLAG_INSENSITIVE;
+    if ( flags & wxCONTROL_UNDETERMINED )
+        state |= GTK_STATE_FLAG_INCONSISTENT;
+
+    GtkStyleContext* sc = gtk_widget_get_style_context(notebook);
+    gtk_style_context_save(sc);
+    gtk_style_context_set_state(sc, GtkStateFlags(state));
+    gtk_style_context_add_class(sc, GTK_STYLE_CLASS_NOTEBOOK);
+    gtk_render_extension(sc, drawable, rect.x, rect.y, rect.width, rect.height, position);
+    gtk_style_context_restore(sc);
+#else
+    GtkStateType state = GTK_STATE_ACTIVE;
+    if ( flags & wxCONTROL_PRESSED )
+        state = GTK_STATE_NORMAL;
+    else if ( flags & wxCONTROL_CURRENT )
+        state = GTK_STATE_PRELIGHT;
+    else if ( flags & wxCONTROL_SELECTED )
+        state = GTK_STATE_SELECTED;
+    else if ( flags & wxCONTROL_DISABLED )
+        state  = GTK_STATE_INSENSITIVE;
+
+    gtk_paint_extension
+    (
+        gtk_widget_get_style(notebook),
+        drawable,
+        state,
+        GTK_SHADOW_OUT,
+        NULL,
+        notebook,
+        "tab",
+        dc.LogicalToDeviceX(rect.x),
+        dc.LogicalToDeviceY(rect.y),
+        rect.width,
+        rect.height,
+        position
+    );
+#endif // __WXGTK3__
 }
