@@ -808,4 +808,60 @@ void wxRendererMac::DrawGauge(wxWindow* WXUNUSED(win),
     HIThemeDrawTrack(&tdi, NULL, cgContext, kHIThemeOrientationNormal);
 }
 
-#endif
+void wxRendererMac::DrawToolBar(wxWindow* WXUNUSED(win),
+                                wxDC& WXUNUSED(dc),
+                                const wxRect& WXUNUSED(rect),
+                                wxOrientation WXUNUSED(orient),
+                                int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+void wxRendererMac::DrawToolButton(wxWindow* WXUNUSED(win),
+                                wxDC& WXUNUSED(dc),
+                                const wxRect& WXUNUSED(rect),
+                                const wxString& WXUNUSED(label),
+                                const wxBitmap& WXUNUSED(bitmap),
+                                wxOrientation WXUNUSED(orient),
+                                bool WXUNUSED(hasDropdown),
+                                int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+void wxRendererMac::DrawToolDropButton(wxWindow* WXUNUSED(win),
+                                        wxDC& WXUNUSED(dc),
+                                        const wxRect& WXUNUSED(rect),
+                                        int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+void wxRendererMac::DrawToolMenuButton(wxWindow* WXUNUSED(win),
+                                        wxDC& WXUNUSED(dc),
+                                        const wxRect& WXUNUSED(rect),
+                                        int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+void wxRendererMac::DrawToolSeparator(wxWindow* WXUNUSED(win),
+                                    wxDC& WXUNUSED(dc),
+                                    const wxRect& WXUNUSED(rect),
+                                    wxOrientation WXUNUSED(orient),
+                                    int WXUNUSED(spacerWidth),
+                                    int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+void wxRendererMac::DrawGripper(wxWindow* WXUNUSED(win),
+                                wxDC& WXUNUSED(dc),
+                                const wxRect& WXUNUSED(rect),
+                                wxOrientation WXUNUSED(orient),
+                                int WXUNUSED(flags))
+{
+    // TODO: (AZ)
+}
+
+#endif // wxOSX_USE_COCOA_OR_CARBON

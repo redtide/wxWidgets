@@ -125,6 +125,8 @@ private:
         { OnToggleDrawFlag(event, wxCONTROL_UNDETERMINED); }
     void OnDrawSpecial(wxCommandEvent &event)
         { OnToggleDrawFlag(event, wxCONTROL_SPECIAL); }
+    void OnDrawSelected(wxCommandEvent &event)
+        { OnToggleDrawFlag(event, wxCONTROL_SELECTED); }
 
     void OnAlignLeft(wxCommandEvent& WXUNUSED(event))
         { OnChangeAlign(wxALIGN_LEFT); }
@@ -240,6 +242,8 @@ private:
             flagsString += "wxCONTROL_UNDETERMINED ";
         if (m_flags & wxCONTROL_SPECIAL)
             flagsString += "wxCONTROL_SPECIAL ";
+        if ( m_flags & wxCONTROL_SELECTED )
+            flagsString += "wxCONTROL_SELECTED ";
         if (flagsString.empty())
             flagsString = "(none)";
         dc.DrawText("Using flags: " + flagsString, x1, y);
@@ -304,6 +308,17 @@ private:
                                     wxRect(wxPoint(x2, y), sizeExpand), m_flags);
         y += lineHeight + sizeExpand.y;
 
+        // TODO: (AZ) remove hardcoded size
+        dc.DrawText("DrawPushButton()", x1, y);
+        renderer.DrawPushButton(this, dc, wxRect(x2, y, 30, 30), m_flags);
+
+        y += lineHeight + 20;
+
+        dc.DrawText("DrawComboBoxDropButton()", x1, y);
+        renderer.DrawComboBoxDropButton(this, dc, wxRect(x2, y, 20, 30), m_flags);
+
+        y += lineHeight + 20;
+
 #ifdef wxHAS_DRAW_TITLE_BAR_BITMAP
         dc.DrawText("DrawTitleBarBitmap()", x1, y);
         wxRect rBtn(x2, y, 21, 21);
@@ -324,6 +339,28 @@ private:
 
         y += lineHeight + rBtn.height;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
+
+        dc.DrawText("DrawToolBar() + DrawGripper() +\nDrawToolSeparator() + DrawToolButton()", x1, y);
+
+        renderer.DrawToolBar(this, dc, wxRect(x2, y, 150, 40), wxHORIZONTAL, m_flags);
+
+        renderer.DrawGripper(this, dc, wxRect(x2, y, 10, 36), wxVERTICAL, m_flags);
+
+        renderer.DrawToolButton(this, dc, wxRect(x2+12, y+2, 32, 36), "",
+                                wxArtProvider::GetBitmap(wxART_GO_BACK, wxART_BUTTON),
+                                wxHORIZONTAL, false, m_flags);
+
+        renderer.DrawToolButton(this, dc, wxRect(x2+44, y+2, 32, 36), "",
+                                wxArtProvider::GetBitmap(wxART_GO_FORWARD, wxART_BUTTON),
+                                wxHORIZONTAL, true, m_flags);
+
+        renderer.DrawToolDropButton(this, dc, wxRect(x2+76, y+2, 14, 36), m_flags);
+
+        renderer.DrawToolSeparator(this, dc, wxRect(x2+94, y+4, 2, 32), wxVERTICAL, 0, m_flags);
+
+        renderer.DrawToolMenuButton(this, dc, wxRect(x2+100, y+2, 46, 36), m_flags);
+
+        y += lineHeight + 20;
 
         // The meanings of those are reversed for the vertical gauge below.
         const wxCoord heightGauge = 24;
@@ -409,6 +446,7 @@ enum
     Render_DrawHot,
     Render_DrawUndetermined,
     Render_DrawSpecial,
+    Render_DrawSelected,
 
     Render_AlignLeft,
     Render_AlignCentre,
@@ -463,6 +501,7 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(Render_DrawHot, MyFrame::OnDrawHot)
     EVT_MENU(Render_DrawUndetermined, MyFrame::OnDrawUndetermined)
     EVT_MENU(Render_DrawSpecial, MyFrame::OnDrawSpecial)
+    EVT_MENU(Render_DrawSelected, MyFrame::OnDrawSelected)
     EVT_MENU(Render_AlignLeft, MyFrame::OnAlignLeft)
     EVT_MENU(Render_AlignCentre, MyFrame::OnAlignCentre)
     EVT_MENU(Render_AlignRight, MyFrame::OnAlignRight)
@@ -560,6 +599,8 @@ MyFrame::MyFrame()
                               "Draw in unde&termined state\tCtrl-T");
     menuFile->AppendCheckItem(Render_DrawSpecial,
                               "Draw in &special state\tCtrl-S");
+    menuFile->AppendCheckItem(Render_DrawSelected,
+                              "Draw in selected state");
     menuFile->AppendSeparator();
 
     menuFile->AppendRadioItem(Render_AlignLeft, "&Left align\tCtrl-1");

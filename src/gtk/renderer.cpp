@@ -131,6 +131,44 @@ public:
 
     virtual void DrawFocusRect(wxWindow* win, wxDC& dc, const wxRect& rect, int flags = 0) wxOVERRIDE;
 
+    virtual void DrawToolBar(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolButton(wxWindow* win,
+                                wxDC& dc,
+                                const wxRect& rect,
+                                const wxString& label,
+                                const wxBitmap& bitmap = wxNullBitmap,
+                                wxOrientation orient = wxHORIZONTAL,
+                                bool hasDropdown = false,
+                                int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolDropButton(wxWindow* win,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolMenuButton(wxWindow* win,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolSeparator( wxWindow* win,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    wxOrientation orient = wxHORIZONTAL,
+                                    int spacerWidth = 0,
+                                    int flags = 0 ) wxOVERRIDE;
+
+    virtual void DrawGripper(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE;
+
     virtual wxSize GetCheckBoxSize(wxWindow *win, int flags = 0) wxOVERRIDE;
 
     virtual wxSplitterRenderParams GetSplitterParams(const wxWindow *win) wxOVERRIDE;
@@ -1171,4 +1209,220 @@ void wxRendererGTK::DrawRadioBitmap(wxWindow*, wxDC& dc, const wxRect& rect, int
         rect.width, rect.height
     );
 #endif
+}
+
+void wxRendererGTK::DrawToolBar(wxWindow* WXUNUSED(win), wxDC& dc,
+                                const wxRect& rect, wxOrientation WXUNUSED(orient),
+                                int WXUNUSED(flags))
+{
+    wxGTKDrawable* drawable = wxGetGTKDrawable(dc);
+    if (drawable == NULL)
+        return;
+
+    GtkWidget* toolbar = wxGTKPrivate::GetToolBarWidget();
+
+#ifdef __WXGTK3__
+    GtkStyleContext *style = gtk_widget_get_style_context(toolbar);
+    gtk_style_context_save(style);
+    gtk_style_context_add_class(style, GTK_STYLE_CLASS_PRIMARY_TOOLBAR);
+    gtk_render_background(style, drawable, rect.x, rect.y, rect.width, rect.height);
+    gtk_render_frame(style, drawable, rect.x, rect.y, rect.width, rect.height);
+    gtk_style_context_restore(style);
+#else
+    gtk_paint_box
+    (
+        gtk_widget_get_style(toolbar),
+        drawable,
+        GTK_STATE_NORMAL,
+        GTK_SHADOW_NONE,
+        NULL,
+        toolbar,
+        NULL,
+        dc.LogicalToDeviceX(rect.x),
+        dc.LogicalToDeviceY(rect.y),
+        rect.width,
+        rect.height
+    );
+#endif // __WXGTK3__
+}
+
+void wxRendererGTK::DrawToolButton(wxWindow* WXUNUSED(win),
+                                    wxDC& WXUNUSED(dc),
+                                    const wxRect& WXUNUSED(rect),
+                                    const wxString& WXUNUSED(label),
+                                    const wxBitmap& WXUNUSED(bitmap),
+                                    wxOrientation WXUNUSED(orient),
+                                    bool WXUNUSED(hasDropdown),
+                                    int WXUNUSED(flags))
+{
+    // TODO: Draw a GtkToolButton or GtkMenuToolButton or
+    //       GtkToggleToolButton or GtkRadioToolButton
+}
+
+void wxRendererGTK::DrawToolDropButton(wxWindow* WXUNUSED(win), wxDC& WXUNUSED(dc),
+                                       const wxRect& WXUNUSED(rect), int WXUNUSED(flags))
+{
+    // TODO: Draw a drop arrow or nothing:
+    //       included in DrawToolButton with hasDropdown = true
+}
+
+void wxRendererGTK::DrawToolMenuButton(wxWindow* WXUNUSED(win), wxDC& WXUNUSED(dc),
+                                       const wxRect& WXUNUSED(rect), int WXUNUSED(flags))
+{
+    // TODO: Draw a GtkMenuToolButton
+}
+
+void wxRendererGTK::DrawToolSeparator(wxWindow* WXUNUSED(win),
+                                      wxDC& dc,
+                                      const wxRect& rect,
+                                      wxOrientation orient,
+                                      int spacerWidth,
+                                      int flags)
+{
+    wxGTKDrawable* drawable = wxGetGTKDrawable(dc);
+    if (drawable == NULL)
+        return;
+
+    GtkWidget* separator = wxGTKPrivate::GetToolSeparatorWidget();
+
+    bool isStretchable = ( flags & wxCONTROL_ISSPACER );
+
+#ifdef __WXGTK3__
+    if (isStretchable)
+    {
+        // TODO: Test spacers
+        if (orient == wxVERTICAL)
+        {
+            if (spacerWidth > rect.width)
+                spacerWidth = rect.width;
+        }
+        else
+        {
+            if (spacerWidth > rect.height)
+                spacerWidth = rect.height;
+        }
+
+        gtk_render_frame
+        (
+            gtk_widget_get_style_context(separator),
+            drawable,
+            rect.x,
+            rect.y,
+            rect.x + spacerWidth,
+            rect.y + rect.height
+        );
+    }
+    else
+    {
+        gtk_render_line
+        (
+            gtk_widget_get_style_context(separator),
+            drawable,
+            rect.x,
+            rect.y,
+            rect.x + rect.width,
+            rect.y + rect.height
+        );
+    }
+#else
+    GtkStyle *style = separator->style;
+
+    if (isStretchable)
+    {
+        // TODO: Test spacers
+        const gchar *tb_detail = "hseparator";
+        if (orient == wxVERTICAL)
+            tb_detail = "vseparator";
+
+        gtk_paint_box
+        (
+            style,
+            drawable,
+            GTK_STATE_NORMAL,
+            GTK_SHADOW_ETCHED_OUT,
+            NULL,
+            wxGTKPrivate::GetToolBarWidget(),
+            tb_detail,
+            dc.LogicalToDeviceX(rect.x),
+            dc.LogicalToDeviceY(rect.y),
+            spacerWidth,
+            rect.height
+        );
+    }
+    else
+    {
+        gint separator_width = style->xthickness;
+        if (separator_width > rect.width)
+            separator_width = rect.width;
+
+        if (orient == wxHORIZONTAL)
+        {
+            gtk_paint_hline
+            (
+                style,
+                drawable,
+                GTK_STATE_NORMAL,
+                NULL,
+                separator,
+                NULL,
+                dc.LogicalToDeviceX(rect.x),
+                dc.LogicalToDeviceX(rect.x + rect.width),
+                dc.LogicalToDeviceY(rect.y)
+            );
+        }
+        else
+        {
+            gtk_paint_vline
+            (
+                style,
+                drawable,
+                GTK_STATE_NORMAL,
+                NULL,
+                separator,
+                NULL,
+                dc.LogicalToDeviceY(rect.y),
+                dc.LogicalToDeviceY(rect.y + rect.height),
+                dc.LogicalToDeviceX(rect.x)
+            );
+        }
+    }
+#endif // __WXGTK3__
+}
+
+void wxRendererGTK::DrawGripper(wxWindow* WXUNUSED(win), wxDC& dc,
+                                const wxRect& rect,
+                                wxOrientation orient,
+                                int WXUNUSED(flags))
+{
+    wxGTKDrawable* drawable = wxGetGTKDrawable(dc);
+    if (drawable == NULL)
+        return;
+
+    GtkWidget* toolbar = wxGTKPrivate::GetToolBarWidget();
+
+#ifdef __WXGTK3__
+    // TODO: Show the correct gripper
+    GtkStyleContext* context = gtk_widget_get_style_context(toolbar);
+    gtk_style_context_save(context);
+//  gtk_style_context_add_class(context, GTK_STYLE_CLASS_TOOLBAR);
+    gtk_render_handle(context, drawable, rect.x, rect.y, rect.width, rect.height);
+    gtk_style_context_restore(context);
+#else
+    gtk_paint_handle
+    (
+        gtk_widget_get_style(toolbar),
+        drawable,
+        GTK_STATE_NORMAL,
+        GTK_SHADOW_NONE,
+        NULL,
+        toolbar,
+        NULL,
+        dc.LogicalToDeviceX(rect.x),
+        dc.LogicalToDeviceY(rect.y),
+        rect.width,
+        rect.height,
+        orient == wxVERTICAL ? GTK_ORIENTATION_VERTICAL
+                             : GTK_ORIENTATION_HORIZONTAL
+    );
+#endif // __WXGTK3__
 }

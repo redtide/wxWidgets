@@ -63,6 +63,7 @@ enum
     wxCONTROL_SIZEGRIP   = wxCONTROL_SPECIAL, // only for the status bar panes
     wxCONTROL_FLAT       = wxCONTROL_SPECIAL, // checkboxes only: flat border
     wxCONTROL_CELL       = wxCONTROL_SPECIAL, // only for item selection rect
+    wxCONTROL_ISSPACER   = wxCONTROL_SPECIAL, // tool separators only: stretchable
     wxCONTROL_CURRENT    = 0x00000010,  // mouse is currently over the control
     wxCONTROL_SELECTED   = 0x00000020,  // selected item in e.g. listbox
     wxCONTROL_CHECKED    = 0x00000040,  // (check/radio button) is checked
@@ -347,6 +348,46 @@ public:
                                     int flags = 0) = 0;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
 
+// TODO: (AZ) make these functions to work with other platforms
+
+    virtual void DrawToolBar(wxWindow* window,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) = 0;
+
+    virtual void DrawToolButton(wxWindow* window,
+                                wxDC& dc,
+                                const wxRect& rect,
+                                const wxString& label,
+                                const wxBitmap& bitmap = wxNullBitmap,
+                                wxOrientation orient = wxHORIZONTAL,
+                                bool hasDropdown = false,
+                                int flags = 0) = 0;
+
+    virtual void DrawToolDropButton(wxWindow *window,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) = 0;
+
+    virtual void DrawToolMenuButton(wxWindow *window,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) = 0;
+
+    virtual void DrawToolSeparator( wxWindow *window,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    wxOrientation orient = wxHORIZONTAL,
+                                    int spacerWidth = 0,
+                                    int flags = 0) = 0;
+
+    virtual void DrawGripper(wxWindow* window,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) = 0;
+
     // Draw a gauge with native style like a wxGauge would display.
     //
     // wxCONTROL_SPECIAL flag must be used for drawing vertical gauges.
@@ -564,6 +605,50 @@ public:
                                     int flags = 0) wxOVERRIDE
         { m_rendererNative.DrawTitleBarBitmap(win, dc, rect, button, flags); }
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
+
+    virtual void DrawToolBar(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawToolBar( win, dc, rect, orient, flags ); }
+
+    virtual void DrawToolButton(wxWindow* win,
+                                wxDC& dc,
+                                const wxRect& rect,
+                                const wxString& label,
+                                const wxBitmap& bitmap = wxNullBitmap,
+                                wxOrientation orient = wxHORIZONTAL,
+                                bool hasDropdown = false,
+                                int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawToolButton(win, dc, rect, label, bitmap, orient, hasDropdown, flags); }
+
+    virtual void DrawToolDropButton(wxWindow* win,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawToolDropButton( win, dc, rect, flags ); }
+
+    virtual void DrawToolMenuButton(wxWindow* win,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawToolMenuButton( win, dc, rect, flags ); }
+
+    virtual void DrawToolSeparator(wxWindow* win,
+                                   wxDC& dc,
+                                   const wxRect& rect,
+                                   wxOrientation orient = wxHORIZONTAL,
+                                   int spacerWidth = 0,
+                                   int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawToolSeparator( win, dc, rect, orient, spacerWidth, flags); }
+
+    virtual void DrawGripper(wxWindow* win,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE
+    { m_rendererNative.DrawGripper( win, dc, rect, orient, flags); }
 
     virtual void DrawGauge(wxWindow* win,
                            wxDC& dc,

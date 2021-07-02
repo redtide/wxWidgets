@@ -149,6 +149,44 @@ public:
                                     int flags = 0) wxOVERRIDE;
 #endif // wxHAS_DRAW_TITLE_BAR_BITMAP
 
+    virtual void DrawToolBar(wxWindow *window,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolButton(wxWindow *window,
+                                wxDC& dc,
+                                const wxRect& rect,
+                                const wxString& label,
+                                const wxBitmap& bitmap = wxNullBitmap,
+                                wxOrientation orient = wxHORIZONTAL,
+                                bool hasDropdown = false,
+                                int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolDropButton(wxWindow *window,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolMenuButton(wxWindow *window,
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    int flags = 0) wxOVERRIDE;
+
+    virtual void DrawToolSeparator(wxWindow *window,
+                                   wxDC& dc,
+                                   const wxRect& rect,
+                                   wxOrientation orient = wxHORIZONTAL,
+                                   int spacerWidth = 0,
+                                   int flags = 0) wxOVERRIDE;
+
+    virtual void DrawGripper(wxWindow *window,
+                             wxDC& dc,
+                             const wxRect& rect,
+                             wxOrientation orient = wxHORIZONTAL,
+                             int flags = 0) wxOVERRIDE;
+
     virtual void DrawGauge(wxWindow* win, wxDC& dc, const wxRect& rect, int value, int max, int flags = 0) wxOVERRIDE;
 
     virtual void DrawItemText(wxWindow* win,
@@ -521,6 +559,179 @@ int wxRendererGeneric::GetHeaderButtonMargin(wxWindow *WXUNUSED(win))
     return 5;
 }
 
+// TODO: (AZ) compare with current code
+// From wxAuiDefaultToolBarArt
+static wxColour GetBaseColour()
+{
+#if defined( __WXMAC__ ) && wxOSX_USE_COCOA_OR_CARBON
+    wxColour baseColour =
+    wxColour(wxMacCreateCGColorFromHITheme(kThemeBrushToolbarBackground));
+#else
+    wxColour baseColour = wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE);
+#endif
+
+    // the baseColour is too pale to use as our base colour,
+    // so darken it a bit --
+    if ((255-baseColour.Red()) + (255-baseColour.Green()) +
+        (255-baseColour.Blue()) < 60)
+    {
+        baseColour = baseColour.ChangeLightness(92);
+    }
+
+    return baseColour;
+}
+
+void wxRendererGeneric::DrawToolBar(wxWindow * WXUNUSED(window),
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    wxOrientation WXUNUSED(orient),
+                                    int WXUNUSED(flags))
+{
+    wxColour baseColour  = GetBaseColour();
+    wxColour startColour = baseColour.ChangeLightness(150);
+    wxColour endColour   = baseColour.ChangeLightness(90);
+    dc.GradientFillLinear(rect, startColour, endColour, wxSOUTH);
+}
+
+void wxRendererGeneric::DrawToolButton( wxWindow * WXUNUSED(window),
+                                        wxDC& dc,
+                                        const wxRect& rect,
+                                        const wxString& WXUNUSED(label),
+                                        const wxBitmap& WXUNUSED(bitmap),
+                                        wxOrientation WXUNUSED(orient),
+                                        bool WXUNUSED(hasDropdown),
+                                        int flags)
+{
+    if (!(flags & wxCONTROL_DISABLED))
+    {
+        wxColour highlightColour =
+        wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT);
+
+        dc.SetPen(wxPen(highlightColour));
+
+        if (flags & wxCONTROL_PRESSED)
+        {
+            dc.SetBrush(wxBrush(highlightColour.ChangeLightness(150)));
+            dc.DrawRectangle(rect);
+        }
+        else if (flags & wxCONTROL_CURRENT)
+        {
+            dc.SetBrush(wxBrush(highlightColour.ChangeLightness(170)));
+            dc.DrawRectangle(rect);
+        }
+        else if (flags & wxCONTROL_CHECKED)
+        {
+            dc.SetBrush(wxBrush(highlightColour.ChangeLightness(180)));
+            dc.DrawRectangle(rect);
+        }
+    }
+}
+
+void wxRendererGeneric::DrawToolDropButton(wxWindow *window,
+                                           wxDC& dc,
+                                           const wxRect& rect,
+                                           int flags)
+{
+    DrawToolButton(window, dc, rect, wxString(), wxBitmap(), wxHORIZONTAL, true, flags);
+    DrawDropArrow(window, dc, rect, flags);
+}
+
+void wxRendererGeneric::DrawToolMenuButton(wxWindow * window,
+                                           wxDC& dc,
+                                           const wxRect& rect,
+                                           int flags)
+{
+    DrawToolButton(window, dc, rect, wxString(), wxBitmap(), wxHORIZONTAL, false, flags);
+
+    wxRect arrowRect
+    (
+        rect.GetX() + (rect.GetWidth()  /3 *2),
+        rect.GetY() + (rect.GetHeight() /3),
+        rect.GetWidth()  / 3,
+        rect.GetHeight() / 3
+    );
+
+    DrawDropArrow(window, dc, arrowRect, flags);
+}
+
+void wxRendererGeneric::DrawToolSeparator(wxWindow * WXUNUSED(window),
+                                          wxDC& dc,
+                                          const wxRect& rect,
+                                          wxOrientation orient,
+                                          int WXUNUSED(spacerWidth),
+                                          int WXUNUSED(flags))
+{
+    bool horizontal = (orient == wxHORIZONTAL);
+
+    wxRect _rect = rect;
+
+    if (horizontal)
+    {
+        _rect.y += (_rect.height/2);
+        _rect.height = 1;
+        int new_width = (_rect.width*3)/4;
+        _rect.x += (_rect.width/2) - (new_width/2);
+        _rect.width = new_width;
+    }
+    else
+    {
+        _rect.x += (_rect.width/2);
+        _rect.width = 1;
+        int new_height = (_rect.height*3)/4;
+        _rect.y += (_rect.height/2) - (new_height/2);
+        _rect.height = new_height;
+    }
+
+    wxColour baseColour  = GetBaseColour();
+    wxColour startColour = baseColour.ChangeLightness(80);
+    wxColour endColour   = baseColour.ChangeLightness(80);
+    dc.GradientFillLinear(_rect, startColour, endColour,
+                          horizontal ? wxEAST : wxSOUTH);
+}
+
+void wxRendererGeneric::DrawGripper(wxWindow * WXUNUSED(window),
+                                    wxDC& dc,
+                                    const wxRect& rect,
+                                    wxOrientation orient,
+                                    int WXUNUSED(flags))
+{
+    wxColor baseColour = GetBaseColour();
+    wxColor darkColour1 = baseColour.ChangeLightness(60);
+    wxColor darkColour2 = baseColour.ChangeLightness(40);
+
+    int i = 0;
+    while (1)
+    {
+        int x, y;
+
+        if (orient == wxHORIZONTAL)
+        {
+            x = rect.GetX() + (i*4) + 4;
+            y = rect.GetY() + 4;
+            if (x > (rect.GetX() + rect.GetWidth() -4))
+                break;
+        }
+        else
+        {
+            x = rect.GetX() + 4;
+            y = rect.GetY() + (i*4) + 4;
+            if (y > (rect.GetY() + rect.GetHeight() -4))
+                break;
+        }
+
+        dc.SetPen(wxPen(darkColour2));
+        dc.DrawPoint(x, y);
+        dc.SetPen(wxPen(darkColour1));
+        dc.DrawPoint(x, y+1);
+        dc.DrawPoint(x+1, y);
+        dc.SetPen(*wxWHITE_PEN);
+        dc.DrawPoint(x+2, y+1);
+        dc.DrawPoint(x+2, y+2);
+        dc.DrawPoint(x+1, y+2);
+
+        i++;
+    }
+}
 
 // draw the plus or minus sign
 void
